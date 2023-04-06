@@ -168,8 +168,40 @@ def create_model(cg: CodeGenerator, model: pharmpy.model.Model) -> None:
 
     if model.statements.ode_system:
         add_ode(model, cg)
-
-    add_statements(model, cg, model.statements.after_odes)
+    
+    #------------
+    dv = list(model.dependent_variables.keys())[0]
+    dv_statement = model.statements.after_odes.find_assignment(dv)
+    from .error_model import res_error_term
+    from .model_block import new_add_statements
+    
+    only_piecewise = False
+    if dv_statement.expression.is_Piecewise:
+        only_piecewise = True
+        dependencies = set()
+        res_alias = set()
+        for s in model.statements.after_odes:
+            if s.symbol == dv:
+                for value, cond in s.expression.args:
+                    t = res_error_term(model, value)
+                    dependencies.update(t.dependencies())
+                    
+                    t.create_res_alias()
+                    res_alias.update(t.res_alias)
+    else:
+        test = res_error_term(model, dv_statement.expression)
+        dependencies = test.dependencies()
+        test.create_res_alias()
+        res_alias = test.res_alias
+    
+    new_add_statements(model,
+                       cg,
+                       model.statements.after_odes,
+                       only_piecewise,
+                       dependencies = dependencies,
+                       res_alias = res_alias)
+    #------------
+    #add_statements(model, cg, model.statements.after_odes)
 
     cg.dedent()
     cg.add('})')
