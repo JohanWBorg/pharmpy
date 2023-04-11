@@ -77,9 +77,8 @@ class res_error_term:
                     self.res = term
                     self.create_res_alias()
                 else:
-                    print("Multiple prediction terms found")
-                    print("Please definee a single symbol for prediction")
-                    exit 
+                    # FIXME : Should this be allowed??
+                    self.res += term
                     
         if self.res is None:
             print("No resulting term found")

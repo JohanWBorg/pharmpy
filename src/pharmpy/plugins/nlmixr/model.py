@@ -162,18 +162,21 @@ def create_model(cg: CodeGenerator, model: pharmpy.model.Model) -> None:
     """
 
     cg.add('model({')
+    
+    # Add statements before ODEs
     cg.indent()
     from .model_block import new_add_statements
-    new_add_statements(model, cg, model.statements.before_odes)
-
+    if len(model.statements.after_odes) != 0:
+        new_add_statements(model, cg, model.statements.before_odes)
+    
+    # Add the ODEs
     if model.statements.ode_system:
         add_ode(model, cg)
     
     #------------
     dv = list(model.dependent_variables.keys())[0]
-    dv_statement = model.statements.after_odes.find_assignment(dv)
+    dv_statement = model.statements.find_assignment(dv)
     from .error_model import res_error_term
-   
     
     only_piecewise = False
     if dv_statement.expression.is_Piecewise:
@@ -193,15 +196,18 @@ def create_model(cg: CodeGenerator, model: pharmpy.model.Model) -> None:
         dependencies = test.dependencies()
         test.create_res_alias()
         res_alias = test.res_alias
-    
+        
+    # Add statements after ODEs
+    if len(model.statements.after_odes) == 0:
+        statements = model.statements
+    else:
+        statements = model.statements.after_odes
     new_add_statements(model,
                        cg,
-                       model.statements.after_odes,
+                       statements,
                        only_piecewise,
                        dependencies = dependencies,
                        res_alias = res_alias)
-    #------------
-    #add_statements(model, cg, model.statements.after_odes)
 
     cg.dedent()
     cg.add('})')
@@ -339,7 +345,11 @@ def parse_modelfit_results(
         return None
 
     rdata["thetas"] = rdata["thetas"].loc[get_thetas(model).names]
-    rdata["sigma"] = rdata["sigma"].loc[get_sigmas(model).names]
+    s = []
+    for sigma in get_sigmas(model):
+        if sigma.init != 1 and not sigma.fix:
+            s.append(sigma.name)
+    rdata["sigma"] = rdata["sigma"].loc[s]
 
     ofv = rdata['ofv']['ofv'][0]
     omegas_sigmas = {}
@@ -352,7 +362,9 @@ def parse_modelfit_results(
     sigma = model.random_variables.epsilons.covariance_matrix
     for i in range(len(sigma)):
         if sigma[i] != 0:
-            omegas_sigmas[sigma[i].name] = rdata['sigma']['fit$theta'][sigma[i].name]
+            s = sigma[i]
+            if model.parameters[s].init != 1 and not model.parameters[s].fix:
+                omegas_sigmas[sigma[i].name] = rdata['sigma']['fit$theta'][sigma[i].name]
     thetas_index = 0
     pe = {}
     for param in model.parameters:
