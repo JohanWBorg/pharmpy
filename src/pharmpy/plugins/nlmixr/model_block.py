@@ -144,11 +144,14 @@ def new_add_statements(model,
         cg.add(f'{dv} ~ add(add_error) + prop(prop_error)')
     
     # Assume all sigma with a fixed inital value of 1 to be removed
+    # TODO: Remove when creating ini block instead
     from pharmpy.modeling import get_sigmas
+    sigma_to_remove = set()
     for sigma in get_sigmas(model):
         # TODO : also remove alias for sigma
         if sigma.init == 1 and sigma.fix:
             cg.remove(f"{sigma.name} <- fixed({sigma.init})")
+            sigma_to_remove.add(sigma.symbol)
         
 
 def extract_add_prop(s, res_alias, model):

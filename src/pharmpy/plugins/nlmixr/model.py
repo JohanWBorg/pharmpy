@@ -579,9 +579,11 @@ def verification(
             pred = True
             nonmem_results.rename(columns={p: 'PRED_NONMEM'}, inplace=True)
             nlmixr_results.rename(columns={p: 'PRED_NLMIXR'}, inplace=True)
-        elif p == "IPRED":
+        elif p == "IPRED" or p == "CIPREDI":
             ipred = True
             nonmem_results.rename(columns={p: 'IPRED_NONMEM'}, inplace=True)
+            if p == "CIPREDI":
+                p = "IPRED"
             nlmixr_results.rename(columns={p: 'IPRED_NLMIXR'}, inplace=True)
         else:
             print(
