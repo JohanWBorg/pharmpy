@@ -163,8 +163,8 @@ def create_model(cg: CodeGenerator, model: pharmpy.model.Model) -> None:
 
     cg.add('model({')
     cg.indent()
-
-    add_statements(model, cg, model.statements.before_odes)
+    from .model_block import new_add_statements
+    new_add_statements(model, cg, model.statements.before_odes)
 
     if model.statements.ode_system:
         add_ode(model, cg)
@@ -173,7 +173,7 @@ def create_model(cg: CodeGenerator, model: pharmpy.model.Model) -> None:
     dv = list(model.dependent_variables.keys())[0]
     dv_statement = model.statements.after_odes.find_assignment(dv)
     from .error_model import res_error_term
-    from .model_block import new_add_statements
+   
     
     only_piecewise = False
     if dv_statement.expression.is_Piecewise:

@@ -28,8 +28,14 @@ class ExpressionPrinter(sympy_printing.str.StrPrinter):
         else:
             return expr.func.__name__ + f'({self.stringify(expr.args, ", ")})'
 
-def new_add_statements(model, cg, statements, only_piecewise, dependencies = None, res_alias = None):
+def new_add_statements(model,
+                       cg,
+                       statements,
+                       only_piecewise = None,
+                       dependencies = set(),
+                       res_alias = None):
     
+    # FIXME: handle other DVs?
     dv = list(model.dependent_variables.keys())[0]
         
     for s in statements:
@@ -42,7 +48,7 @@ def new_add_statements(model, cg, statements, only_piecewise, dependencies = Non
                     sigma = dist.variance
                 assert sigma is not None
                 
-                if not only_piecewise:
+                if only_piecewise is False:
                     from .error_model import res_error_term
                     test = res_error_term(model, s.expression)
                     res = test.res
@@ -50,13 +56,7 @@ def new_add_statements(model, cg, statements, only_piecewise, dependencies = Non
                         cg.add(f'{s.symbol} <- {res}')
                         cg.add(f'{s.symbol} ~ add(add_error) + prop(prop_error)')
                         
-                        # remove SIGMA definition due to redundancy
-                        from pharmpy.modeling import get_sigmas
-                        if test.add.sigma_alias or test.prop.sigma_alias:
-                            pass
-                        else:
-                            for sigma in get_sigmas(model):
-                                cg.remove(f"{sigma.name} <- fixed({sigma.init})")
+                        # removal of sigma done at the end
                         
                     else:
                         cg.add(f'{s.symbol} <- {res}')
@@ -109,7 +109,7 @@ def new_add_statements(model, cg, statements, only_piecewise, dependencies = Non
                                 value = largest_value
                         cg.indent()
                         
-                        if not only_piecewise:
+                        if only_piecewise is False:
                             cg.add(f'{s.symbol.name} <- {value}')
                             
                             if s.symbol in dependencies:
@@ -117,7 +117,7 @@ def new_add_statements(model, cg, statements, only_piecewise, dependencies = Non
                                     add, prop = extract_add_prop(value, res_alias, model)
                                     cg.add(f'add_error <- {add}')
                                     cg.add(f'prop_error <- {prop}')
-                        else:
+                        elif s.symbol == dv:
                             from .error_model import res_error_term
                             if not value.is_constant() and not isinstance(value, sympy.Symbol):
                                 t = res_error_term(model, value)
@@ -126,6 +126,8 @@ def new_add_statements(model, cg, statements, only_piecewise, dependencies = Non
                                 cg.add(f'prop_error <- {t.prop.expr}')
                             else:
                                 cg.add(f'{s.symbol.name} <- {value}')
+                        else:
+                            cg.add(f'{s.symbol.name} <- {value}')
                                 
                         cg.dedent()
                     cg.add('}')
@@ -140,6 +142,13 @@ def new_add_statements(model, cg, statements, only_piecewise, dependencies = Non
     if only_piecewise:
         cg.add(f'{dv} <- res')
         cg.add(f'{dv} ~ add(add_error) + prop(prop_error)')
+    
+    # Assume all sigma with a fixed inital value of 1 to be removed
+    from pharmpy.modeling import get_sigmas
+    for sigma in get_sigmas(model):
+        # TODO : also remove alias for sigma
+        if sigma.init == 1 and sigma.fix:
+            cg.remove(f"{sigma.name} <- fixed({sigma.init})")
         
 
 def extract_add_prop(s, res_alias, model):
@@ -270,7 +279,7 @@ def add_ode(model: pharmpy.model.Model, cg: CodeGenerator) -> None:
         for s in des.statements:
             if not pattern.match(s.symbol.name):
                 statements.append(s)
-        add_statements(model, cg, statements)
+        new_add_statements(model, cg, statements)
     for eq in model.statements.ode_system.eqs:
         # Should remove piecewise from these equations in nlmixr
         if eq.atoms(sympy.Piecewise):

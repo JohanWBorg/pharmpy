@@ -168,6 +168,7 @@ class error:
             accepted_symbols.update(thetas)
             for symbol in self.expr.free_symbols:
                 if symbol not in accepted_symbols:
+                    # TODO : also aid  aliases for all dependencies 
                     self.dependencies.add(symbol)
                     
 def find_term(
