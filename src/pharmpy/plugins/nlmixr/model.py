@@ -196,7 +196,7 @@ def create_model(cg: CodeGenerator, model: pharmpy.model.Model) -> None:
         dependencies = test.dependencies()
         test.create_res_alias()
         res_alias = test.res_alias
-        
+    
     # Add statements after ODEs
     if len(model.statements.after_odes) == 0:
         statements = model.statements

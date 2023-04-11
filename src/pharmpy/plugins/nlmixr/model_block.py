@@ -131,7 +131,7 @@ def new_add_statements(model,
                         cg.dedent()
                     cg.add('}')
                 elif s.symbol in dependencies:
-                    add, prop = extract_add_prop(s, res_alias, model)
+                    add, prop = extract_add_prop(s.expression, res_alias, model)
                     cg.add(f'{s.symbol.name} <- {expr}') #TODO : Remove ?
                     cg.add(f'add_error <- {add}')
                     cg.add(f'prop_error <- {prop}')
