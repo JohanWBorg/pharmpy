@@ -136,7 +136,7 @@ def _interpret_symbol(model: Model, definition, symbol: Symbol) -> Tuple[str, ..
             elif symbol.name == 'IIV':
                 return tuple(get_individual_parameters(model, level='iiv'))
             elif symbol.name == 'BIOAVAIL':
-                return tuple(get_bio_parameters(model, logit = True))
+                return tuple(get_bio_parameters(model, effect_friendly=True))
             else:
                 return ()
 

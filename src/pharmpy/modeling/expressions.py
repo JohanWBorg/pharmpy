@@ -786,7 +786,7 @@ def _rvs(model: Model, level: str):
 
     raise ValueError(f'Cannot handle level `{level}`')
 
-def get_bio_parameters(model: Model, logit: bool=False)  -> Union[List[str], Tuple[List[str], Model]]:
+def get_bio_parameters(model: Model, effect_friendly: bool=False, logit: bool=False)  -> Union[List[str], Tuple[List[str], Model]]:
     """
     Retrieves all parameters connected to bioavailability. Will only go one
     level down for each bioavailability statement.
@@ -854,39 +854,46 @@ def get_bio_parameters(model: Model, logit: bool=False)  -> Union[List[str], Tup
                 
             else:
                 # Don't change anyhting, simply return the parameter
-                bio_parameters.append(bio_assignment.symbol)
+                if not effect_friendly:
+                    bio_parameters.append(bio_assignment.symbol)
         
         else:
             # Statement is dependent on some other symbol
-            if logit:
-                # Determine if logit transform or not
-                # if logit
-                #   Should only have a single free symbol --> Evaluate that
-                # else
-                #   Create new variable with the same name that IS logit transformed
-                #   Add covariate to the same original statement
+            # Determine if logit transform or not
+            # if logit
+            #   Should only have a single free symbol --> Evaluate that
+            # else
+            #   Create new variable with the same name that IS logit transformed
+            #   Add covariate to the same original statement
+            
+            # --> NO NEED to go further down since covariance can be captured
+            # at the first level
+            # FIXME : add level argument if you WANT to go further down and
+            # find ALL dependencies.
+            
+            if (len(bio_assignment.expression.free_symbols) == 1
+                and bio_assignment.expression == 1/(1+sympy.exp(-list(bio_assignment.expression.free_symbols)[0]))
+                ):
+                # FIX a more general check for if logit transformed
+                # Logit transformed already --> IGNORE
+                if not logit and not effect_friendly:
+                    bio_parameters.append(bio_assignment.symbol)
+                bio_parameters.append(list(bio_assignment.expression.free_symbols)[0])
+            else:
+                # Not logit --> TRANSFORM!
+                # Go from
+                # BIO = S
+                # -->
+                # Assert S != 1
+                # BIO_COV = log(S/(1-S))
+                # BIO = 1/(1+exp(-BIO_COV))
                 
-                # --> NO NEED to go further down since covariance can be captured
-                # at the first level
-                # FIXME : add level argument if you WANT to go further down and
-                # find ALL dependencies.
-                
-                if (len(bio_assignment.expression.free_symbols) == 1
-                    and bio_assignment.expression == 1/(1+sympy.exp(-list(bio_assignment.expression.free_symbols)[0]))
-                    ):
-                    # FIX a more general check for if logit transformed
-                    # Logit transformed already --> IGNORE
-                    bio_parameters.append(list(bio_assignment.expression.free_symbols)[0])
-                else:
-                    # Not logit --> TRANSFORM!
-                    # Go from
-                    # BIO = S
-                    # -->
-                    # Assert S != 1
-                    # BIO_COV = log(S/(1-S))
-                    # BIO = 1/(1+exp(-BIO_COV))
-                    
-                    # FIXME : Assert S != 1
+                # FIXME : Assert S != 1
+                if not logit and not effect_friendly:
+                    # Don't change anything, return the found parameter (and free_symbols?)
+                    for s in bio_assignment.free_symbols:
+                        bio_parameters.append(s)
+                elif logit:
                     log_bio = Assignment.create(f'LOG_{bio_assignment.symbol}', sympy.log(bio_assignment.expression)/(1-bio_assignment.expression))
                     new_statements = model.statements.reassign(bio_assignment.symbol, 1/(1+sympy.exp(-log_bio.symbol)))
                     new_index = new_statements.find_assignment_index(bio_assignment.symbol)
@@ -899,10 +906,6 @@ def get_bio_parameters(model: Model, logit: bool=False)  -> Union[List[str], Tup
                     
                     bio_parameters += [log_bio.symbol]
                 
-            else:
-                # Don't change anything, return the found parameter (and free_symbols?)
-                for s in bio_assignment.free_symbols:
-                    bio_parameters.append(s)
     if logit:
         return bio_parameters, model.update_source()
     else:
