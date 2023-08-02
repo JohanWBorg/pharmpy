@@ -3,7 +3,7 @@ from typing import Dict, Iterable, List, Sequence, Tuple, TypeVar, Union
 
 from pharmpy.model import Model
 from pharmpy.modeling.covariate_effect import EffectType, OperationType, add_covariate_effect
-from pharmpy.modeling.expressions import get_individual_parameters, get_pk_parameters
+from pharmpy.modeling.expressions import get_individual_parameters, get_pk_parameters, get_bio_parameters
 
 from ..statement.definition import Let
 from ..statement.feature.covariate import (
@@ -135,6 +135,8 @@ def _interpret_symbol(model: Model, definition, symbol: Symbol) -> Tuple[str, ..
                 )
             elif symbol.name == 'IIV':
                 return tuple(get_individual_parameters(model, level='iiv'))
+            elif symbol.name == 'BIOAVAIL':
+                return tuple(get_bio_parameters(model, logit = True))
             else:
                 return ()
 

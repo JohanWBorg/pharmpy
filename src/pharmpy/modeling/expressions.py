@@ -786,6 +786,127 @@ def _rvs(model: Model, level: str):
 
     raise ValueError(f'Cannot handle level `{level}`')
 
+def get_bio_parameters(model: Model, logit: bool=False)  -> Union[List[str], Tuple[List[str], Model]]:
+    """
+    Retrieves all parameters connected to bioavailability. Will only go one
+    level down for each bioavailability statement.
+    Only bioavailability statements explicitly stated in the model code will
+    be returned.
+    
+    If logit is True, the bioavailability statements will be logit transformed
+    (if needed) and effects can be added to the retrieved parameters while still
+    ensuring that the bioavailability stays in the range [0,1]. If set to True,
+    the function will return a tuple with the parameter list and new model.
+
+    Parameters
+    ----------
+    model : Model
+        Pharmpy model to retrieve bioavailability parameters from.
+    logit : bool, optional
+        Boolean if logit transform the model statements. The default is False.
+
+    Returns
+    -------
+    (Union[List[str], Tuple[List[str], Model]])
+        If logit is False, return list of bioavailability parameters.
+        If logit is True, return tuple with list of bioavailability parameters and
+        the updated model.
+
+    """
+    bio_parameters = []
+    
+    from pharmpy.modeling import get_bioavailability
+    
+    # Will not work with COVSEARCH --> Need to have PREVIOUSLY logit transformed
+    # Add function to do so and raise warning if not performed yet?
+    
+    bio = get_bioavailability(model)
+    for _, bio_symbol in bio.items():
+        bio_assignment = model.statements.find_assignment(bio_symbol)
+        if len(bio_assignment.expression.free_symbols) == 0:
+            if logit:
+                # --> Require logit transformation if covariate is to be added
+                # Should this be performed here?
+                # -->
+                # BIO_COV = 1 - 2.225e-16  # Undefined protection
+                # LOG_BIO = log(BIO / (1 - BIO))
+                # FINAL = 1 / (1 + exp(-BIO_COV))
+                # OR
+                # BIO_COV = 1 - 2.225e-16  # Undefined protection
+                # BIO = 1 / (1 + exp(-log(BIO / (1 - BIO))))
+                if bio_assignment.expression == sympy.Number(1):
+                    bio_init = bio_assignment.expression - 2.225e-16
+                else:
+                    bio_init = sympy.Number(bio_assignment.expression)
+                new_bio = Assignment.create(f'COV_{bio_assignment.symbol}', bio_init)
+                log_bio = Assignment.create(f'LOG_{bio_assignment.symbol}', sympy.log(new_bio.symbol)/(1-new_bio.symbol))
+                new_statements = model.statements.reassign(bio_assignment.symbol, 1/(1+sympy.exp(-log_bio.symbol)))
+                new_index = new_statements.find_assignment_index(bio_assignment.symbol)
+                
+                model = model.replace(statements=
+                              new_statements[:new_index]
+                              + new_bio
+                              + log_bio
+                              + new_statements[new_index:]
+                              )
+                
+                bio_parameters += [new_bio.symbol, log_bio.symbol]
+                
+            else:
+                # Don't change anyhting, simply return the parameter
+                bio_parameters.append(bio_assignment.symbol)
+        
+        else:
+            # Statement is dependent on some other symbol
+            if logit:
+                # Determine if logit transform or not
+                # if logit
+                #   Should only have a single free symbol --> Evaluate that
+                # else
+                #   Create new variable with the same name that IS logit transformed
+                #   Add covariate to the same original statement
+                
+                # --> NO NEED to go further down since covariance can be captured
+                # at the first level
+                # FIXME : add level argument if you WANT to go further down and
+                # find ALL dependencies.
+                
+                if (len(bio_assignment.expression.free_symbols) == 1
+                    and bio_assignment.expression == 1/(1+sympy.exp(-list(bio_assignment.expression.free_symbols)[0]))
+                    ):
+                    # FIX a more general check for if logit transformed
+                    # Logit transformed already --> IGNORE
+                    bio_parameters.append(list(bio_assignment.expression.free_symbols)[0])
+                else:
+                    # Not logit --> TRANSFORM!
+                    # Go from
+                    # BIO = S
+                    # -->
+                    # Assert S != 1
+                    # BIO_COV = log(S/(1-S))
+                    # BIO = 1/(1+exp(-BIO_COV))
+                    
+                    # FIXME : Assert S != 1
+                    log_bio = Assignment.create(f'LOG_{bio_assignment.symbol}', sympy.log(bio_assignment.expression)/(1-bio_assignment.expression))
+                    new_statements = model.statements.reassign(bio_assignment.symbol, 1/(1+sympy.exp(-log_bio.symbol)))
+                    new_index = new_statements.find_assignment_index(bio_assignment.symbol)
+                    
+                    model = model.replace(statements=
+                                  new_statements[:new_index]
+                                  + log_bio
+                                  + new_statements[new_index:]
+                                  )
+                    
+                    bio_parameters += [log_bio.symbol]
+                
+            else:
+                # Don't change anything, return the found parameter (and free_symbols?)
+                for s in bio_assignment.free_symbols:
+                    bio_parameters.append(s)
+    if logit:
+        return bio_parameters, model.update_source()
+    else:
+        return bio_parameters
 
 def depends_on(model: Model, symbol: str, other: str):
     return _depends_on_any_of(
