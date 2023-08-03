@@ -791,6 +791,7 @@ def logit_bio(model: Model):
     
     # Will not work with COVSEARCH --> Need to have PREVIOUSLY logit transformed
     # Add function to do so and raise warning if not performed yet?
+    # Or perhaps in the covsearch workflow, if BIO --> then perform this transform
     
     bio = get_bioavailability(model)
     for _, bio_symbol in bio.items():

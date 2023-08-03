@@ -144,6 +144,8 @@ def create_workflow(
 
     wf = Workflow()
     wf.name = NAME_WF
+    
+    #FIXME : If bioavailability in the searched features, logit transform?
 
     init_task = init(model)
     wf.add_task(init_task)
