@@ -65,29 +65,28 @@ Arguments
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | ``administration``                                | Route of administration. One of 'iv', 'oral' or 'ivoral'                                                        |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| ``cl_init``                                       | Initial estimate for the population clearance (default is 0.01)                                                 |
+| ``cl_init``                                       | Initial estimate for the population clearance                                                                   |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| ``vc_init``                                       | Initial estimate for the central compartment population volume (default is 1)                                   |
+| ``vc_init``                                       | Initial estimate for the central compartment population volume                                                  |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| ``mat_init``                                      | Initial estimate for the mean absorption time (only for oral models, default is 0.1)                            |
+| ``mat_init``                                      | Initial estimate for the mean absorption time (only for oral model)                                             |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| ``b_init``                                        | Initial estimate for the baseline effect (only for pkpd models, default is 0.1)                                 |
+| ``b_init``                                        | Initial estimate for the baseline effect (only for pkpd models)                                                 |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| ``emax_init``                                     | Initial estimate for the Emax (only for pkpd models, default is 0.1)                                            |
+| ``emax_init``                                     | Initial estimate for the Emax (only for pkpd models)                                                            |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| ``ec50_init``                                     | Initial estimate for the EC50 (only for pkpd models, default is 0.1)                                            |
+| ``ec50_init``                                     | Initial estimate for the EC50 (only for pkpd models)                                                            |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| ``met_init``                                      | Initial estimate for the mean equilibration time (only for pkpd models, default is 0.1)                         |
+| ``met_init``                                      | Initial estimate for the mean equilibration time (only for pkpd models)                                         |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | ``search_space``                                  | MFL for :ref:`search space<search_space_amd>` of structural and covariate models                                |
-|                                                   | (default depends on ``modeltype``)                                                                              |
+|                                                   | (default depends on ``modeltype`` and ``administration``)                                                       |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | ``lloq_limit``                                    | Lower limit of quantification.                                                                                  |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | ``lloq_method``                                   | Method to use for handling lower limit of quantification. See :py:func:`pharmpy.modeling.transform_blq`.        |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| ``strategy``                                      | :ref:`Strategy<strategy_amd>` defining run order of the different subtools valid arguments are 'default'        |
-|                                                   | (deafult) and 'reevaluation'                                                                                    |
+| ``strategy``                                      | :ref:`Strategy<strategy_amd>` defining run order of the different subtools. Default is 'default'                |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | ``allometric_variable``                           | Variable to use for allometry (default is name of column described as body weight)                              |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
@@ -144,6 +143,8 @@ used in order to differentiate the different doses from one another with respect
 input instead, this is not applied as it is assumed to have the correct CMT values for the connected model, along with a way of 
 differentiating the doses from one another.
 
+.. _search_space_amd:
+
 ~~~~~~~~~~~~
 Search space
 ~~~~~~~~~~~~
@@ -151,8 +152,19 @@ Search space
 .. note::
     Please see the description of :ref:`mfl` for how to define the search space for the structural and covariate models.
 
-The search space has different defaults depending on which type of data has been inputed. For a PK oral model, the
-default is:
+Some tools that are run using AMD supports the use of a searchspace, which can be used to define all possible (and allowed) combinations
+of model features when searching for a model. Currently, the search space support both structural as well as covariate models.
+All features are however given in the same MFL string. The different search spaces are then extracted from there and have no
+effect on one another. 
+
+If no search space is given for either the structural- or covariate modeling, a default searchspace will be applied. This will
+be based on the modeltype as well as administration. Please check the respective :ref:`modeltype page<modeltypes_amd>` to get
+information on what is used for the specific modeltype/administration combination.
+
+Example
+=======
+
+For a PK oral model, the default is:
 
 .. code-block::
 
@@ -161,27 +173,6 @@ default is:
     LAGTIME([OFF,ON])
     TRANSITS([0,1,3,10],*)
     PERIPHERALS(0,1)
-    COVARIATE?(@IIV, @CONTINUOUS, *)
-    COVARIATE?(@IIV, @CATEGORICAL, CAT)
-
-For a PK IV model, the default is:
-
-.. code-block::
-
-    ELIMINATION(FO)
-    PERIPHERALS([0,1,2])
-    COVARIATE?(@IIV, @CONTINUOUS, *)
-    COVARIATE?(@IIV, @CATEGORICAL, CAT)
-    
-For a PK IV+ORAL model, the default is:
-
-.. code-block::
-
-    ABSORPTION([FO,ZO,SEQ-ZO-FO])
-    ELIMINATION(FO)
-    LAGTIME([OFF,ON])
-    TRANSITS([0,1,3,10],*)
-    PERIPHERALS([0,1,2])
     COVARIATE?(@IIV, @CONTINUOUS, *)
     COVARIATE?(@IIV, @CATEGORICAL, CAT)
 
@@ -403,12 +394,16 @@ The structural part of an AMD run is heavily dependent on which modeltype is bei
 IIVsearch
 ~~~~~~~~~
 
-This subtool selects the IIV structure, see :ref:`iivsearch` for more details about the tool.
+This subtool selects the IIV structure.  The tool will find both the number of IIVs to add along with their connected
+block structure. See :ref:`iivsearch` for more details about the tool.
+
+In general, it will search look for which IIVs should be added to the parameters connected to the specific model type.
+For instance PK parameters for a PK model and PD parameters when running a PKPD model.
 
 Residual
 ~~~~~~~~
 
-This subtool selects the residual model, see :ref:`ruvsearch` for more details about the tool.
+This subtool selects the residual model connected to the model. See :ref:`ruvsearch` for more details about the tool.
 
 
 IOVsearch
@@ -420,14 +415,23 @@ more details about the tool. If no argument for ``occasion`` is given, this tool
 Allometry
 ~~~~~~~~~
 
-This subtool tries to apply allometry, see :ref:`allometry` for more details about the tool. Please note that if 
-``ignore_datainfo_fallback`` is set to ``True`` and no allometric variable is given, this tool will not be run. 
+This subtool forcefully applies allometry to clearance and volume parameters of the inputted model. Please note that if 
+``ignore_datainfo_fallback`` is set to ``True`` and no allometric variable is given, this tool will not be run.
+See :ref:`allometry` for more details about the tool. 
 
 Covariates
 ~~~~~~~~~~
 
-This subtool selects which covariate effects to apply, see :ref:`covsearch` for more details about the tool.Please 
+This subtool selects which covariate effects to apply, see :ref:`covsearch` for more details about the tool. Please 
 note that if ``ignore_datainfo_fallback`` is set to ``True`` and no covariates are given, this tool will not be run.
+
+The search space of effects given to this tool should include all possible (and allowed) covariate effects for the 
+resulting model. This means that covariate effects that are a part of the input model but not the given search space
+will be removed.
+
+:: note::
+    As allometric scaling can be interpreted as a power covariate effect. These effects will be added to the search space
+    to avoid removing them during a COVSearch run, if allometry was a part of the strategy.
 
 ~~~~~~~
 Results
