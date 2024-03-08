@@ -8,6 +8,26 @@ The AMD tool is a general tool for fully automatic model development to decide t
 or a starting model. The tool is a combination of the following tools: :ref:`modelsearch`, :ref:`structsearch`, :ref:`iivsearch`,
 :ref:`iovsearch`, :ref:`ruvsearch`, :ref:`allometry`, and :ref:`covsearch`.
 
+On this page, general information regarding the AMD workflow can be found.
+
+~~~~~~~~~~~~~~~~~~~~
+Supported modeltypes
+~~~~~~~~~~~~~~~~~~~~
+
+.. _modeltypes_amd:
+
+AMD currently supports a few different model types. For specific information regarding a given modeltype,
+please see the respective page.
+
+.. toctree::
+   :maxdepth: 1
+
+   PK <amd_pk>
+   PKPD <amd_pkpd>
+   TMDD <amd_tmdd>
+   Drug Metabolite <amd_drug_metabolite>
+
+
 ~~~~~~~
 Running
 ~~~~~~~
@@ -35,19 +55,6 @@ for the best structural model, IIV structure, and residual model in the order sp
 as a ``categorical`` covariate and AGE as a ``continuous`` covariate. Finally, we declare the WGT-column as our
 ``allometric_variable``, VISI as our ``occasion`` column.
 
-.. _modeltypes_amd:
-
-Supported modeltypes
-~~~~~~~~~~~~~~~~~~~~
-
-.. toctree::
-   :maxdepth: 1
-
-   PK <amd_pk>
-   PKPD <amd_pkpd>
-   TMDD <amd_tmdd>
-   Drug Metabolite <amd_drug_metabolite>
-
 ~~~~~~~~~
 Arguments
 ~~~~~~~~~
@@ -61,9 +68,9 @@ Arguments
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | ``results``                                       | ModelfitResults if input is a model                                                                             |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| ``modeltype``                                     | Type of model to build (e.g. 'basic_pk', 'pkpd', 'drug_metabolite' or 'tmdd')                                   |
+| ``modeltype``                                     | Type of model to build (e.g. 'basic_pk', 'pkpd', 'drug_metabolite' or 'tmdd'). Default is 'basic_pk'            |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| ``administration``                                | Route of administration. One of 'iv', 'oral' or 'ivoral'                                                        |
+| ``administration``                                | Route of administration. One of 'iv', 'oral' or 'ivoral'. Default is 'oral'                                     |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | ``cl_init``                                       | Initial estimate for the population clearance                                                                   |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
@@ -162,7 +169,7 @@ be based on the modeltype as well as administration. Please check the respective
 information on what is used for the specific modeltype/administration combination.
 
 Example
-=======
+~~~~~~~
 
 For a PK oral model, the default is:
 
@@ -429,7 +436,7 @@ The search space of effects given to this tool should include all possible (and 
 resulting model. This means that covariate effects that are a part of the input model but not the given search space
 will be removed.
 
-:: note::
+.. note::
     As allometric scaling can be interpreted as a power covariate effect. These effects will be added to the search space
     to avoid removing them during a COVSearch run, if allometry was a part of the strategy.
 
@@ -513,7 +520,7 @@ Examples
 ~~~~~~~~
 
 TMDD
-----
+~~~~
 
 Run AMD for a TMDD model:
 
@@ -535,7 +542,7 @@ Run AMD for a TMDD model:
    The name of the DVID column must be "DVID".
 
 PKPD
-----
+~~~~
 
 Run AMD for a PKPD model:
 

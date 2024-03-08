@@ -1,107 +1,409 @@
 .. _amd_tmdd:
 
-========
+==========
 AMD - TMDD
-========
+==========
 
-WRITE A FEW LINES OF DESCRIPTION HERE
-- What kind of model
-- What kind of input
+Will create the best TMDD model based on an input model or dataset. The given workflow is based on the given :ref:`strategy<strategy_amd>`.
 
 ~~~~~~~
 Running
 ~~~~~~~
 
-The code to initiate the AMD tool for a PK model:
+The code to initiate the AMD tool for a tmdd model:
 
 .. pharmpy-code::
 
-    from pharmpy.tools import run_amd
+    from pharmpy.modeling import read_model
+    from pharmpy.tools read_modelfit_results, run_structsearch
 
-    dataset_path = 'path/to/dataset'
-    strategy = 'default'
-    res = run_amd(input=dataset_path,
-                  modeltype='basic_pk',
-                  administration='oral',
-                  strategy=strategy,
-                  search_space='LET(CATEGORICAL, [SEX]); LET(CONTINUOUS, [AGE])',
-                  allometric_variable='WGT',
-                  occasion='VISI')
+    start_model = read_model('path/to/model')
+
+    res = run_amd(
+                modeltype='tmdd',
+                input=start_model,
+                search_space='PERIPHERALS([1,2]);ELIMINATION([FO,ZO])',
+                dv_types={'drug': 1, 'target': 2, 'complex': 3}
+                )
 
 Arguments
 ~~~~~~~~~
-The arguments used in PK models are the following
 
-WRITE SOMETHING ABOUT INPUT
+.. _amd_tmdd_args:
+
+The AMD arguments used for TMDD models can be seen below. Some are mandatory for this type of model building while others can are optional, and some AMD arguments are
+not used for this modeltype. If any of the mandatory arguments is missing, the program till raise an error.
+
+Regarding the dataset, no number of DVIDs are expected, but the default structure (which is assumed if nothing else is
+given) is the following :
+
++------+--------------------------------+
+| DVID | Description                    |
++======+================================+
+|  1   | Drug                           |
++------+--------------------------------+
+|  2   | Target                         |
++------+--------------------------------+
+|  3   | Complex                        |
++------+--------------------------------+
+|  4   | Total drug                     |
++------+--------------------------------+
+|  5   | Total target                   |
++------+--------------------------------+
+
+.. note::
+   The name of the DVID column must be "DVID".
+   
 
 Mandatory
 ---------
 
-+-------------------------------------------------+-----------------------------------------------------------------------------------------+
-| Argument                                        | Description                                                                             |
-+=================================================+=========================================================================================+
-| ``modeltype``                                   | Type of model. In this case "tmdd".                                                     |
-+-------------------------------------------------+-----------------------------------------------------------------------------------------+
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| Argument                                          | Description                                                                                                     |
++===================================================+=================================================================================================================+
+| ``input``                                         | Path to a dataset or start model object. See :ref:`input in amd<input_amd>`                                     |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| ``modeltype``                                     | Set to 'tmdd' for this modeltype.                                                                               |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| ``cl_init``                                       | Initial estimate for the population clearance                                                                   |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| ``vc_init``                                       | Initial estimate for the central compartment population volume                                                  |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| ``mat_init``                                      | Initial estimate for the mean absorption time (only for oral models)                                            |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 
 Optional
 --------
 
-+-------------------------------------------------+-----------------------------------------------------------------------------------------+
-| Argument                                        | Description                                                                             |
-+=================================================+=========================================================================================+
-| ``cl_init``                                     | Initial estimate for the population clearance (default is 0.01)                         |
-+-------------------------------------------------+-----------------------------------------------------------------------------------------+
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| Argument                                          | Description                                                                                                     |
++===================================================+=================================================================================================================+
+| ``dv_types``                                      | Dictionary of DV types for multiple DVs (e.g. dv_types = {'target': 2}).                                        |
+|                                                   | Allowed keys are: 'drug', 'target', 'complex', 'drug_tot' and 'target_tot'. (For TMDD models only)              |
+|                                                   | For more information see :ref:`here<dv_types>`.                                                                 |
+|                                                   | Default is {'drug': 1, 'target': 2, 'complex': 3, 'drug_tot': 4, 'target_tot': 5}                               |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| ``administration``                                | Route of administration. One of 'iv', 'oral' or 'ivoral'. Default is 'oral'                                     |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| ``strategy``                                      | :ref:`Strategy<strategy_amd>` defining run order of the different subtools. Default is 'default'                |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| ``results``                                       | ModelfitResults if input is a model                                                                             |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| ``search_space``                                  | MFL for :ref:`search space<search_space_amd>` of structural and covariate models                                |
+|                                                   | (default depends on ``modeltype`` and ``administration``)                                                       |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| ``lloq_limit``                                    | Lower limit of quantification.                                                                                  |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| ``lloq_method``                                   | Method to use for handling lower limit of quantification. See :py:func:`pharmpy.modeling.transform_blq`.        |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| ``strategy``                                      | :ref:`Strategy<strategy_amd>` defining run order of the different subtools valid arguments are 'default'        |
+|                                                   | (deafult) and 'reevaluation'                                                                                    |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| ``allometric_variable``                           | Variable to use for allometry (default is name of column described as body weight)                              |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| ``occasion``                                      | Name of occasion column                                                                                         |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| ``strictness``                                    | :ref:`Strictness<strictness>` criteria for model selection.                                                     |
+|                                                   | Default is "minimization_successful or                                                                          |
+|                                                   | (rounding_errors and sigdigs>= 0.1)"                                                                            |
+|                                                   | If ``strictness`` is set to ``None`` no strictness                                                              |
+|                                                   | criteria are applied                                                                                            |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| ``mechanistic_covariates``                        | List of covariates or covariate/parameter combinations to run in a separate prioritized covsearch run. Allowed  |
+|                                                   | elements in the list are strings of covariates or tuples with one covariate and parameter each, e.g ["AGE",     |
+|                                                   | ("WGT", "CL")]. The associated effects are extracted from the given search space.                               |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| ``retries_strategy``                              | Decide how to use the retries tool. Valid options are 'skip', 'all_final' or 'final'. Default is 'all_final'    |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| ``seed``                                          | A random number generator or seed to use for steps with random sampling.                                        |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| ``parameter_uncertainty_method``                  | Parameter uncertainty method to use. Currently implemented methods are: 'SANDWICH', 'SMAT', 'RMAT' and 'EFIM'.  |
+|                                                   | For more information about these methods see                                                                    |
+|                                                   | :py:func:`here<pharmpy.model.EstimationStep.parameter_uncertainty_method>`.                                     |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+| ``ignore_datainfo_fallback``                      | Decide wether or not to use connected datainfo object to infer information about the model. If True, all        |
+|                                                   | information regarding the model must be given explicitly by the user, such as the allometric varible. If False, |
+|                                                   | such information is extracted using the datainfo, in the absence of arguments given by the user. Default        |
+|                                                   | is False.                                                                                                       |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 
-
-.. _models:
 
 ~~~~~~~~~~~~~~
 Strategy parts
 ~~~~~~~~~~~~~~
 
-Refer to AMD strategy explanation to see how the different parts are connected
+How the AMD tool is run is defined using the ``strategy`` argument as explained in :ref:`Strategy<strategy_amd>`. How exactly the different parts of each respective
+strategy is run for a TMDD model can be seen below.
 
 Structural
 ~~~~~~~~~~
 
-Structural covariates
-=====================
+.. graphviz::
 
-Modelsearch
-===========
+    digraph BST {
+            node [fontname="Arial",shape="rect"];
+            rankdir="LR";
+            base [label="Input", shape="oval"]
+            s0 [label="structural covariates"]
+            s1 [label="modelsearch"]
+            s2 [label="structsearch"]
 
+            base -> s0
+            s0 -> s1
+            s1 -> s2
+        }
+
+
+**Structural covariates**
+
+The structural covariates are added directly to the starting model. If these cannot be added here (due to missing 
+parameters for instance) they will be tested once more at the start of the next covsearch run.
+
+Note that all structural covariates are added all at once without any test or search.
+
+These are given within the search space by specifying them as mechanistic covariates in the following way:
+
+.. code-block::
+
+    COVARIATE(CL, WGT, POW)
+    COVARIATE?(@IIV, @CATEGORICAL, *)
+
+In this search space, the power covariate effect of WGT on CL is interpreted as a structural covariate (due to the missing "?")
+while the other statement would be explored in a later COVSearch run.
+
+There is no default structural covariates to run if not specified by the user.
+
+**Modelsearch**
+
+The settings that the AMD tool uses for the modelsearch subtool can be seen in the table below.
+
++---------------+----------------------------------------------------------------------------------------------------+
+| Argument      | Setting                                                                                            |
++===============+====================================================================================================+
+| search_space  | ``'search_space'`` (As defined in :ref:`AMD options<amd_tmdd_args>`)                               |
++---------------+----------------------------------------------------------------------------------------------------+
+| algorithm     | ``'reduced_stepwise'``                                                                             |
++---------------+----------------------------------------------------------------------------------------------------+
+| iiv_strategy  | ``'absorption_delay'``                                                                             |
++---------------+----------------------------------------------------------------------------------------------------+
+| rank_type     | ``'bic'`` (type: mixed)                                                                            |
++---------------+----------------------------------------------------------------------------------------------------+
+| cutoff        | ``None``                                                                                           |
++---------------+----------------------------------------------------------------------------------------------------+
+
+If no search space is given by the user, the default search space is dependent on the ``administration`` argument
+
+**TMDD Oral**
+
+.. code-block::
+
+    ABSORPTION([FO,ZO,SEQ-ZO-FO])
+    ELIMINATION([MM, MIX-FO-MM])
+    LAGTIME([OFF,ON])
+    TRANSITS([0,1,3,10],*)
+    PERIPHERALS(0,1)
+
+**TMDD IV**
+
+.. code-block::
+
+    ELIMINATION(FO)
+    PERIPHERALS([0,1,2])
+    
+**TMDD IV+ORAL**
+
+.. code-block::
+
+    ABSORPTION([FO,ZO,SEQ-ZO-FO])
+    ELIMINATION([MM, MIX-FO-MM])
+    LAGTIME([OFF,ON])
+    TRANSITS([0,1,3,10],*)
+    PERIPHERALS([0,1,2])
+    
+**Structsearch**
+
+The input model to the structsearch tool is the highest ranking model from modelsearch that has mixed-mm-fo elimination
+(note that this model might not be the highest ranking overall). If no such model exists then the final model from modelsearch
+will be used regardless of elimination type.
+
+For a TMDD model, structsearch is run to determine the best structural model. All input arguments are specified by
+the user when initializing AMD.
+
++--------------------+----------------------------------------------------------------------------------------------------+
+| Argument           | Setting                                                                                            |
++====================+====================================================================================================+
+| modeltype          | 'tmdd'                                                                                             |
++--------------------+----------------------------------------------------------------------------------------------------+
+| dv_types           | ``'dv_types'`` (As defined in :ref:`AMD input<amd_tmdd_args>`)                                     |
++--------------------+----------------------------------------------------------------------------------------------------+
+| strictness         | ``strictness`` (As defined in :ref:`AMD input<amd_tmdd_args>`)                                     |
++--------------------+----------------------------------------------------------------------------------------------------+
+| extra_model        | The same model as the inputted model with one less peripheral compartment, if such a model exists  |
+|                    | in the modelsearch results and passed the strictness criteria. Otherwise None.                     |
++--------------------+----------------------------------------------------------------------------------------------------+
+| extra_model_reults | The connected modelfit results object for the extra model, if any. Otherwise None.                 |
++--------------------+----------------------------------------------------------------------------------------------------+
 
 IIVSearch
 ~~~~~~~~~
 
+The settings that the AMD tool uses for this subtool can be seen in the table below.
+
++---------------+---------------------------+------------------------------------------------------------------------+
+| Argument      | Setting                   |   Setting (rerun)                                                      |
++===============+===========================+========================================================================+
+| algorithm     | ``'top_down_exhaustive'`` |  ``'top_down_exhaustive'``                                             |
++---------------+---------------------------+------------------------------------------------------------------------+
+| iiv_strategy  | ``'fullblock'``           |  ``'no_add'``                                                          |
++---------------+---------------------------+------------------------------------------------------------------------+
+| rank_type     | ``'bic'`` (type: iiv)     |  ``'bic'`` (type: iiv)                                                 |
++---------------+---------------------------+------------------------------------------------------------------------+
+| cutoff        | ``None``                  |  ``None``                                                              |
++---------------+---------------------------+------------------------------------------------------------------------+
 
 Residual
 ~~~~~~~~
 
+The settings that the AMD tool uses for this subtool can be seen in the table below. When re-running the tool, the
+settings remain the same.
+
++---------------+----------------------------------------------------------------------------------------------------+
+| Argument      | Setting                                                                                            |
++===============+====================================================================================================+
+| groups        | ``4``                                                                                              |
++---------------+----------------------------------------------------------------------------------------------------+
+| p_value       | ``0.05``                                                                                           |
++---------------+----------------------------------------------------------------------------------------------------+
+| skip          | ``None``                                                                                           |
++---------------+----------------------------------------------------------------------------------------------------+
 
 IOVSearch
 ~~~~~~~~~
 
+The settings that the AMD tool uses for this subtool can be seen in the table below. 
+
++---------------------+----------------------------------------------------------------------------------------------+
+| Argument            | Setting                                                                                      |
++=====================+==============================================================================================+
+| column              | ``occasion`` (As defined in :ref:`AMD options<amd_tmdd_args>`)                               |
++---------------------+----------------------------------------------------------------------------------------------+
+| list_of_parameters  | ``None``                                                                                     |
++---------------------+----------------------------------------------------------------------------------------------+
+| rank_type           | ``'bic'`` (type: random)                                                                     |
++---------------------+----------------------------------------------------------------------------------------------+
+| cutoff              | ``None``                                                                                     |
++---------------------+----------------------------------------------------------------------------------------------+
+| distribution        | ``'same-as-iiv'``                                                                            |
++---------------------+----------------------------------------------------------------------------------------------+
 
 Allometry
 ~~~~~~~~~
 
+The settings that the AMD tool uses for this subtool can be seen in the table below.
+
++----------------------+---------------------------------------------------------------------------------------------+
+| Argument             | Setting                                                                                     |
++======================+=============================================================================================+
+| allometric_variable  | ``allometric_variable`` (As defined in :ref:`AMD options<amd_tmdd_args>`)                   |
++----------------------+---------------------------------------------------------------------------------------------+
+| reference_value      | ``70``                                                                                      |
++----------------------+---------------------------------------------------------------------------------------------+
+| parameters           | ``None``                                                                                    |
++----------------------+---------------------------------------------------------------------------------------------+
+| initials             | ``None``                                                                                    |
++----------------------+---------------------------------------------------------------------------------------------+
+| lower_bounds         | ``None``                                                                                    |
++----------------------+---------------------------------------------------------------------------------------------+
+| upper_bounds         | ``None``                                                                                    |
++----------------------+---------------------------------------------------------------------------------------------+
+| fixed                | ``None``                                                                                    |
++----------------------+---------------------------------------------------------------------------------------------+
 
 COVSearch
 ~~~~~~~~~
 
-Mechanisitic covariates
-=======================
+The settings that the AMD tool uses for this subtool can be seen in the table below. The effects are extracted from the
+search space.
+
++---------------+----------------------------------------------------------------------------------------------------+
+| Argument      | Setting                                                                                            |
++===============+====================================================================================================+
+| effects       | ``search_space`` (As defined in :ref:`AMD options<amd_tmdd_args>`)                                 |
++---------------+----------------------------------------------------------------------------------------------------+
+| p_forward     | ``0.05``                                                                                           |
++---------------+----------------------------------------------------------------------------------------------------+
+| p_backward    | ``0.01``                                                                                           |
++---------------+----------------------------------------------------------------------------------------------------+
+| max_steps     | ``-1``                                                                                             |
++---------------+----------------------------------------------------------------------------------------------------+
+| algorithm     | ``'scm-forward-then-backward'``                                                                    |
++---------------+----------------------------------------------------------------------------------------------------+
+
+If no search space for this tool is given, the following default will be used:
+
+.. code-block::
+
+    COVARIATE?(@IIV, @CONTINUOUS, exp, *)
+    COVARIATE?(@IIV, @CATEGORICAL, cat, *)
 
 
-Exploratory covariates
-======================
+
+.. graphviz::
+
+    digraph BST {
+            node [fontname="Arial",shape="rect"];
+            rankdir="LR";
+            base [label="Input", shape="oval"]
+            s0 [label="mechanistic covariates"]
+            s1 [label="exploratory covariates"]
+
+            base -> s0
+            s0 -> s1
+        }
 
 
+
+**Mechanisitic covariates**
+
+If any mechanistic covariates have been given as input to the AMD tool, the specified covariate effects for these
+covariates is run in a separate initial covsearch run when adding covariates. These covariate effects are extracted
+from the given search space
+
+**Exploratory covariates**
+
+The covariate effects remaining in the search space after having run potentially both structural and mechanistic covariates
+are now run in an exploratory search.
+
+**Examples**
+
+.. code-block::
+
+    mechanistic_covariates = [AGE, (CL,WGT)]
+
+    COVARIATE?([CL,V], [AGE, WGT], *)
+    COVARIATE?(Q, WGT, *)
+
+In the above case, the mechanistic/exploratory search spaces would be the following:
+
+Mechanistic
+
+.. code-block::
+
+    COVARIATE?([CL,V], AGE, *)
+    COVARIATE?(CL, WGT, *)
+
+Exploratory
+
+.. code-block::
+
+    COVARIATE?([V,Q], WGT, *)
 
 ~~~~~~~~
 Examples
 ~~~~~~~~
+
+Minimum
+~~~~~~~
 
 A minimum example for running AMD with modeltype PK:
 
@@ -109,27 +411,31 @@ A minimum example for running AMD with modeltype PK:
 
     from pharmpy.tools import run_amd
 
-    start_model = read_model('path/to/model')
+    dataset_path = 'path/to/dataset'
 
     res = run_amd(
-                modeltype='basic_pk',
-                input=start_model,
-                search_space='ABSORPTION(FO)',
+                dataset_path,
+                modeltype="tmdd",
+                administration="iv",
+                cl_init=2.0,
+                vc_init=5.0
                 )
 
-Specifying initial parameters:
+Model input and search space
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Specifying input model and search space:
 
 .. pharmpy-code::
 
-    from pharmpy.tools import run_amd
+    from pharmpy.modeling import read_model
+    from pharmpy.tools read_modelfit_results, run_structsearch
 
     start_model = read_model('path/to/model')
 
     res = run_amd(
-                modeltype='basic_pk',
+                modeltype='tmdd',
                 input=start_model,
-                search_space='ABSORPTION(FO)',
-                cl_init=2.0,
-                vc_init=5.0,
+                search_space='PERIPHERALS([1,2]);ELIMINATION([FO,ZO])',
+                dv_types={'drug': 1, 'target': 2, 'complex': 3}
                 )
-

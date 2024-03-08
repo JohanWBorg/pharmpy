@@ -4,9 +4,7 @@
 AMD - PK
 ========
 
-WRITE A FEW LINES OF DESCRIPTION HERE
-- What kind of model
-- What kind of input
+Will create a PK only model based on a model or dataset input. The given workflow is based on the given :ref:`strategy<strategy_amd>`.
 
 ~~~~~~~
 Running
@@ -24,15 +22,18 @@ The code to initiate the AMD tool for a PK model:
                   modeltype='basic_pk',
                   administration='oral',
                   strategy=strategy,
-                  search_space='LET(CATEGORICAL, [SEX]); LET(CONTINUOUS, [AGE])',
+                  search_space='ABSORPTION(FO);ELIMINATION(ZO)',
                   allometric_variable='WGT',
                   occasion='VISI')
 
 Arguments
 ~~~~~~~~~
-The arguments used in PK models are the following
 
-WRITE SOMETHING ABOUT INPUT
+.. _amd_pk_args:
+
+The arguments used in PK models can be seen below. Some are mandatory for this type of model building while others can are optional, and some AMD arguments are
+not used for this modeltype. If any of the mandatory arguments are missing, the model will not be run. The only exception being for ``mat_init`` which is only
+mandatory for 'oral' administration.
 
 Mandatory
 ---------
@@ -40,13 +41,9 @@ Mandatory
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | Argument                                          | Description                                                                                                     |
 +===================================================+=================================================================================================================+
-| ``input``                                         | Path to a dataset or start model object. See :ref:`input_amd`                                                   |
+| ``input``                                         | Path to a dataset or start model object. See :ref:`input in amd<input_amd>`                                     |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| ``results``                                       | ModelfitResults if input is a model                                                                             |
-+---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| ``modeltype``                                     | Type of model to build (e.g. 'basic_pk', 'pkpd', 'drug_metabolite' or 'tmdd')                                   |
-+---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| ``administration``                                | Route of administration. One of 'iv', 'oral' or 'ivoral'                                                        |
+| ``modeltype``                                     | Set to 'basic_pk' for this modeltype.                                                                           |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | ``cl_init``                                       | Initial estimate for the population clearance                                                                   |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
@@ -61,9 +58,11 @@ Optional
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | Argument                                          | Description                                                                                                     |
 +===================================================+=================================================================================================================+
+| ``administration``                                | Route of administration. One of 'iv', 'oral' or 'ivoral'. Default is 'oral'                                     |
++---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | ``strategy``                                      | :ref:`Strategy<strategy_amd>` defining run order of the different subtools. Default is 'default'                |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| ``mat_init``                                      | Initial estimate for the mean absorption time                                                                   |
+| ``results``                                       | ModelfitResults if input is a model                                                                             |
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | ``search_space``                                  | MFL for :ref:`search space<search_space_amd>` of structural and covariate models                                |
 |                                                   | (default depends on ``modeltype`` and ``administration``)                                                       |
@@ -104,8 +103,6 @@ Optional
 +---------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 
 
-.. _models:
-
 ~~~~~~~~~~~~~~
 Strategy parts
 ~~~~~~~~~~~~~~
@@ -130,8 +127,7 @@ Structural
         }
 
 
-Structural covariates
-=====================
+**Structural covariates**
 
 The structural covariates are added directly to the starting model. If these cannot be added here (due to missing 
 parameters for instance) they will be tested once more at the start of the next covsearch run.
@@ -145,20 +141,19 @@ These are given within the search space by specifying them as mechanistic covari
     COVARIATE(CL, WGT, POW)
     COVARIATE?(@IIV, @CATEGORICAL, *)
 
-in this search space, the power covariate effect of WGT on CL is interpreted as a structural covariate (due to the missing "?")
+In this search space, the power covariate effect of WGT on CL is interpreted as a structural covariate (due to the missing "?")
 while the other statement would be explored in a later COVSearch run.
 
 There is no default structural covariates to run if not specified by the user.
 
-Modelsearch
-===========
+**Modelsearch**
 
 The settings that the AMD tool uses for the modelsearch subtool can be seen in the table below.
 
 +---------------+----------------------------------------------------------------------------------------------------+
 | Argument      | Setting                                                                                            |
 +===============+====================================================================================================+
-| search_space  | Given in :ref:`AMD options<amd_args>` (``search_space``)                                           |
+| search_space  | ``search_space`` (As defined in :ref:`AMD options<amd_pk_args>`)                                   |
 +---------------+----------------------------------------------------------------------------------------------------+
 | algorithm     | ``'reduced_stepwise'``                                                                             |
 +---------------+----------------------------------------------------------------------------------------------------+
@@ -171,8 +166,8 @@ The settings that the AMD tool uses for the modelsearch subtool can be seen in t
 
 If no search space is given by the user, the default search space is dependent on the ``administration`` argument
 
-PK Oral
--------
+**PK Oral**
+
 .. code-block::
 
     ABSORPTION([FO,ZO,SEQ-ZO-FO])
@@ -180,20 +175,16 @@ PK Oral
     LAGTIME([OFF,ON])
     TRANSITS([0,1,3,10],*)
     PERIPHERALS(0,1)
-    COVARIATE?(@IIV, @CONTINUOUS, *)
-    COVARIATE?(@IIV, @CATEGORICAL, CAT)
 
-PK IV
------
+**PK IV**
+
 .. code-block::
 
     ELIMINATION(FO)
     PERIPHERALS([0,1,2])
-    COVARIATE?(@IIV, @CONTINUOUS, *)
-    COVARIATE?(@IIV, @CATEGORICAL, CAT)
     
-PK IV+ORAL
-----------
+**PK IV+ORAL**
+
 .. code-block::
 
     ABSORPTION([FO,ZO,SEQ-ZO-FO])
@@ -201,8 +192,6 @@ PK IV+ORAL
     LAGTIME([OFF,ON])
     TRANSITS([0,1,3,10],*)
     PERIPHERALS([0,1,2])
-    COVARIATE?(@IIV, @CONTINUOUS, *)
-    COVARIATE?(@IIV, @CATEGORICAL, CAT)
 
 IIVSearch
 ~~~~~~~~~
@@ -245,7 +234,7 @@ The settings that the AMD tool uses for this subtool can be seen in the table be
 +---------------------+----------------------------------------------------------------------------------------------+
 | Argument            | Setting                                                                                      |
 +=====================+==============================================================================================+
-| column              | Given in :ref:`AMD options<amd_args>` (``occasion``)                                         |
+| column              | ``occasion`` (As defined in :ref:`AMD options<amd_pk_args>`)                                 |
 +---------------------+----------------------------------------------------------------------------------------------+
 | list_of_parameters  | ``None``                                                                                     |
 +---------------------+----------------------------------------------------------------------------------------------+
@@ -264,7 +253,7 @@ The settings that the AMD tool uses for this subtool can be seen in the table be
 +----------------------+---------------------------------------------------------------------------------------------+
 | Argument             | Setting                                                                                     |
 +======================+=============================================================================================+
-| allometric_variable  | Given in :ref:`AMD options<amd_args>` (``allometric_variable``)                             |
+| allometric_variable  | ``allometric_variable`` (As defined in :ref:`AMD options<amd_pk_args>`)                     |
 +----------------------+---------------------------------------------------------------------------------------------+
 | reference_value      | ``70``                                                                                      |
 +----------------------+---------------------------------------------------------------------------------------------+
@@ -288,7 +277,7 @@ search space.
 +---------------+----------------------------------------------------------------------------------------------------+
 | Argument      | Setting                                                                                            |
 +===============+====================================================================================================+
-| effects       | Given in :ref:`AMD options<amd_args>` (``search_space``)                                           |
+| effects       | ``search_space`` (As defined in :ref:`AMD options<amd_pk_args>`)                                   |
 +---------------+----------------------------------------------------------------------------------------------------+
 | p_forward     | ``0.05``                                                                                           |
 +---------------+----------------------------------------------------------------------------------------------------+
@@ -299,21 +288,43 @@ search space.
 | algorithm     | ``'scm-forward-then-backward'``                                                                    |
 +---------------+----------------------------------------------------------------------------------------------------+
 
-Mechanisitic covariates
-=======================
+If no search space for this tool is given, the following default will be used:
+
+.. code-block::
+
+    COVARIATE?(@IIV, @CONTINUOUS, exp, *)
+    COVARIATE?(@IIV, @CATEGORICAL, cat, *)
+
+
+
+.. graphviz::
+
+    digraph BST {
+            node [fontname="Arial",shape="rect"];
+            rankdir="LR";
+            base [label="Input", shape="oval"]
+            s0 [label="mechanistic covariates"]
+            s1 [label="exploratory covariates"]
+
+            base -> s0
+            s0 -> s1
+        }
+
+
+
+**Mechanisitic covariates**
 
 If any mechanistic covariates have been given as input to the AMD tool, the specified covariate effects for these
 covariates is run in a separate initial covsearch run when adding covariates. These covariate effects are extracted
 from the given search space
 
-Exploratory covariates
-======================
+**Exploratory covariates**
 
 The covariate effects remaining in the search space after having run potentially both structural and mechanistic covariates
 are now run in an exploratory search.
 
-Example
--------
+**Examples**
+
 .. code-block::
 
     mechanistic_covariates = [AGE, (CL,WGT)]
@@ -324,17 +335,24 @@ Example
 In the above case, the mechanistic/exploratory search spaces would be the following:
 
 Mechanistic
+
 .. code-block::
+
     COVARIATE?([CL,V], AGE, *)
     COVARIATE?(CL, WGT, *)
 
 Exploratory
+
 .. code-block::
+
     COVARIATE?([V,Q], WGT, *)
 
 ~~~~~~~~
 Examples
 ~~~~~~~~
+
+Minimum
+~~~~~~~
 
 A minimum example for running AMD with modeltype PK:
 
@@ -346,10 +364,14 @@ A minimum example for running AMD with modeltype PK:
 
     res = run_amd(
                 dataset_path,
-                modeltype="basic_pk"
+                modeltype="basic_pk",
+                administration="iv",
                 cl_init=2.0,
                 vc_init=5.0
                 )
+
+Model input and search space
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Specifying input model and search space:
 
@@ -360,10 +382,10 @@ Specifying input model and search space:
     start_model = read_model('path/to/model')
 
     res = run_amd(
-                modeltype='basic_pk',
                 input=start_model,
+                modeltype='basic_pk',
+                administration='iv'
                 search_space='ABSORPTION(FO);ELIMINATION(ZO);COVARIATE(CL, WGT, POW)',
                 cl_init=2.0,
                 vc_init=5.0,
                 )
-
