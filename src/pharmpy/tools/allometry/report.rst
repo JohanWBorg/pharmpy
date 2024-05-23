@@ -26,11 +26,23 @@ Final model
 
 .. jupyter-execute::
    :hide-code:
+   
+   if final_model_parameter_estimates['RSE'].any():
+       results = final_model_parameter_estimates.style.format({
+           'estimates': '{:,.4f}'.format,
+           'RSE': '{:,.1%}'.format,
+       })
+   elif final_model_parameter_estimates['estimates'].any():
+       results = final_model_parameter_estimates['estimates'].to_frame(name='estimates').style.format({
+           'estimates': '{:,.4f}'.format,
+       })
+   else:
+       # Fall back to using parameter estimates from modelfit results object
+       results = res.final_results.parameter_estimates.to_frame(name='estimates').style.format({
+           'estimates': '{:,.4f}'.format,
+       })
 
-   final_model_parameter_estimates.style.format({
-       'estimates': '{:,.4f}'.format,
-       'RSE': '{:,.1%}'.format,
-   })
+   results
 
 
 .. jupyter-execute::
