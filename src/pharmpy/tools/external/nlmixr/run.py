@@ -10,6 +10,7 @@ from typing import Optional, Union
 
 import pharmpy.config as config
 import pharmpy.model
+from pharmpy.deps import numpy as np
 from pharmpy.deps import pandas as pd
 from pharmpy.internals.code_generator import CodeGenerator
 from pharmpy.model.external.nlmixr import convert_model
@@ -656,6 +657,13 @@ def parse_modelfit_results(model: pharmpy.model.Model, path: Path) -> Union[None
     predictions = rdata['pred']
     predictions = predictions.set_index(model.dataset[model.dataset["DV"] != 0].index)
 
+    # FIXME : Complete parsing of parameter estimates
+    sdcorr_ests = pd.Series(np.nan, index=pe.index)
+    sdcorr_ests = sdcorr_ests.rename("estimates")
+
+    # FIXME : Parse standard errors
+    sdcorr = pd.Series(np.nan, index=pe.index)
+
     res = ModelfitResults(
         ofv=ofv,
         minimization_successful=True,  # FIXME: Parse minimization status
@@ -663,5 +671,7 @@ def parse_modelfit_results(model: pharmpy.model.Model, path: Path) -> Union[None
         predictions=predictions,
         log=Log(),
         warnings=[],  # FIXME : Parse warnings
+        parameter_estimates_sdcorr=sdcorr_ests,
+        standard_errors_sdcorr=sdcorr,
     )
     return res
