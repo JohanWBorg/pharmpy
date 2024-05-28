@@ -15,6 +15,7 @@ from pharmpy.modeling import (
     remove_residuals,
     set_estimation_step,
     set_evaluation_step,
+    set_posterior_eta_type,
     set_simulation,
 )
 
@@ -207,6 +208,16 @@ def test_set_simulation(testdata, load_model_for_test):
     assert len(model.execution_steps) == 1
     assert model.execution_steps[0] == SimulationStep(n=2, seed=1234)
     assert model.code.split('\n')[-2] == "$SIMULATION (1234) SUBPROBLEMS=2 ONLYSIMULATION"
+
+
+def test_set_posterior_eta_type(testdata, load_model_for_test):
+    model = load_model_for_test(testdata / 'nonmem' / 'minimal.mod')
+    assert model.execution_steps[0].posterior_eta_type == "mode"
+    model = set_posterior_eta_type(model, "mean")
+    assert model.execution_steps[0].posterior_eta_type == "mean"
+
+    with pytest.raises(ValueError, match="Posterior eta type"):
+        model = set_posterior_eta_type(model, "Not a real type")
 
 
 def test_add_predictions_raise(testdata, load_model_for_test):

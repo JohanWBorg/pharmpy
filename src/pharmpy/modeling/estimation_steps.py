@@ -64,6 +64,42 @@ def set_estimation_step(model: Model, method: Literal[ESTIMATION_METHODS], idx: 
     return model.update_source()
 
 
+def set_posterior_eta_type(model: Model, posterior_eta_type: str, idx: int = 0):
+    """Set posterior eta type
+
+    Determine the posterior eta type to be extracted for the model.
+    Can either be "mode" or "mean".
+
+    Parameters
+    ----------
+    model : Model
+        Pharmpy model
+    posterior_eta_type : {'mode', 'mean'}
+        Type of posterior eta to set.
+    idx : int
+        index of estimation step, default is 0 (first estimation step)
+
+    Returns
+    -------
+    Model
+        Pharmpy model object
+
+    """
+    allowed_types = ('mean', 'mode')
+    if posterior_eta_type not in allowed_types:
+        raise ValueError(
+            f'Posterior eta type ´{posterior_eta_type}´ is not supported.'
+            f' Need to be on of {allowed_types}'
+        )
+
+    steps = model.execution_steps
+    newstep = steps[idx].replace(posterior_eta_type=posterior_eta_type)
+    newsteps = steps[0:idx] + newstep + steps[idx + 1 :]
+    model = model.replace(execution_steps=newsteps)
+
+    return model.update_source()
+
+
 def add_estimation_step(
     model: Model, method: Literal[ESTIMATION_METHODS], idx: Optional[int] = None, **kwargs
 ):

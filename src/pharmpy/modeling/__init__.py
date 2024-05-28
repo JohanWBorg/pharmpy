@@ -94,6 +94,7 @@ from .estimation_steps import (
     remove_residuals,
     set_estimation_step,
     set_evaluation_step,
+    set_posterior_eta_type,
     set_simulation,
 )
 from .evaluation import (
@@ -435,6 +436,7 @@ __all__ = [
     'set_name',
     'set_ode_solver',
     'set_peripheral_compartments',
+    'set_posterior_eta_type',
     'set_power_on_ruv',
     'set_proportional_error_model',
     'set_reference_values',
